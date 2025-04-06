@@ -1,7 +1,7 @@
 from transformers import pipeline
 
-# Lightweight model for toxicity detection
-classifier = pipeline("text-classification", model="unitary/toxic-bert", top_k=None)
+# Ensure compatibility with latest transformers versions
+classifier = pipeline("text-classification", model="unitary/toxic-bert")
 
 def detect_toxic_text(text):
     result = classifier(text)
