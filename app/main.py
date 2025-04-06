@@ -47,3 +47,9 @@ async def analyze_image(
             os.remove(temp_filename)
 
     return {"nsfw_score": result}
+
+# For local development or Render deployment
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))  # Render binds to PORT env variable
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port)
