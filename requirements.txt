@@ -1,7 +1,6 @@
 fastapi
-uvicorn
+pillow
 transformers>=4.37.0
 torch
-nudenet
+uvicorn
 nsfw-detector
-
