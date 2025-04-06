@@ -1,17 +1,17 @@
 from fastapi import FastAPI, Request
-from pydantic import BaseModel
 from app.text_model import predict_toxicity_text
 
 app = FastAPI()
 
-class TextInput(BaseModel):
-    text: str
-
 @app.get("/")
-def root():
-    return {"status": "ok"}
+async def root():
+    return {"message": "Text toxicity detection API is running."}
 
-@app.post("/predict-text")
-def predict_text(input: TextInput):
-    result = predict_toxicity_text(input.text)
-    return result
+@app.post("/predict")
+async def predict(request: Request):
+    data = await request.json()
+    text = data.get("text", "")
+    if not text:
+        return {"error": "No text provided"}
+    score = predict_toxicity_text(text)
+    return {"toxicity_score": score}
