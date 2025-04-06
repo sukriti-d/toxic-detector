@@ -1,19 +1,13 @@
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
-import torch.nn.functional as F
 
-# Load once
-tokenizer = AutoTokenizer.from_pretrained("unitary/toxic-bert")
-model = AutoModelForSequenceClassification.from_pretrained("unitary/toxic-bert")
+tokenizer = AutoTokenizer.from_pretrained("tomh/toxigen-roberta-tiny")
+model = AutoModelForSequenceClassification.from_pretrained("tomh/toxigen-roberta-tiny")
 
-LABELS = ["toxicity", "severe_toxicity", "obscene", "identity_attack", "insult", "threat", "sexual_explicit"]
-
-def predict_toxicity_text(text: str):
+def predict_toxicity_text(text: str) -> float:
     inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
     with torch.no_grad():
-        logits = model(**inputs).logits
-        probs = F.sigmoid(logits).squeeze().tolist()
-
-    result = {label: round(prob, 4) for label, prob in zip(LABELS, probs)}
-    verdict = "toxic" if any(prob > 0.5 for prob in probs) else "clean"
-    return {"labels": result, "verdict": verdict}
+        outputs = model(**inputs)
+        scores = torch.nn.functional.softmax(outputs.logits, dim=1)
+        toxic_score = scores[0][1].item()
+    return toxic_score
