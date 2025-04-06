@@ -1,21 +1,19 @@
 from transformers import pipeline
+import threading
 
-# Load the toxic comment classification model
-classifier = pipeline("text-classification", model="unitary/toxic-bert")
+# Lazy-load model with thread-safe singleton
+_classifier = None
+_lock = threading.Lock()
 
-def detect_toxic_text(text: str):
-    """
-    Classifies the input text using unitary/toxic-bert and returns top predictions.
+def get_classifier():
+    global _classifier
+    if _classifier is None:
+        with _lock:
+            if _classifier is None:
+                _classifier = pipeline("text-classification", model="unitary/toxic-bert", top_k=None)
+    return _classifier
 
-    Args:
-        text (str): The input text to analyze.
-
-    Returns:
-        list: A list of dictionaries with labels and scores.
-    """
-    result = classifier(text, top_k=None)  # Return all class scores
-    cleaned_result = [
-        {"label": item["label"].lower().replace("toxicity_", ""), "score": round(item["score"], 4)}
-        for item in result
-    ]
-    return cleaned_result
+def predict_toxicity_text(text):
+    classifier = get_classifier()
+    predictions = classifier(text)
+    return [{"label": item["label"], "score": round(item["score"], 4)} for item in predictions[0]]
