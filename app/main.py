@@ -1,55 +1,40 @@
-from fastapi import FastAPI, UploadFile, File, Form, Header, HTTPException
-from app.toxic_text_model import detect_toxic_text
-from app.toxic_image_model import detect_nsfw_image
-import shutil
-import uuid
-import os
+from fastapi import FastAPI, File, UploadFile, HTTPException
+from pydantic import BaseModel
+from app.toxic_text_model import predict_toxicity_text
+from app.toxic_image_model import predict_toxicity_image
+from fastapi.middleware.cors import CORSMiddleware
+from PIL import Image
+import io
 
 app = FastAPI()
 
-# Environment-based API key (with fallback)
-API_KEY = os.getenv("API_KEY", "my-default-key")
+# Enable CORS for all origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Middleware-style function for API key validation
-def validate_api_key(x_api_key: str = Header(...)):
-    if x_api_key != API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid API Key")
+# Pydantic model for text input
+class TextData(BaseModel):
+    text: str
 
-@app.post("/analyze/text")
-async def analyze_text(
-    text: str = Form(...),
-    x_api_key: str = Header(...)
-):
-    validate_api_key(x_api_key)
-    result = detect_toxic_text(text)
-    return {"toxicity": result}
-
-@app.post("/analyze/image")
-async def analyze_image(
-    file: UploadFile = File(...),
-    x_api_key: str = Header(...)
-):
-    validate_api_key(x_api_key)
-
-    # Generate unique filename for temporary storage
-    temp_filename = f"temp_{uuid.uuid4().hex}.jpg"
-
+@app.post("/predict-text")
+async def predict_text(data: TextData):
     try:
-        # Save uploaded image to disk temporarily
-        with open(temp_filename, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        result = predict_toxicity_text(data.text)
+        return {"success": True, "prediction": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Text prediction error: {str(e)}")
 
-        # Run NSFW detection
-        result = detect_nsfw_image(temp_filename)
-    finally:
-        # Clean up: remove temporary file
-        if os.path.exists(temp_filename):
-            os.remove(temp_filename)
-
-    return {"nsfw_score": result}
-
-# For local development or Render deployment
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", 8000))  # Render binds to PORT env variable
-    uvicorn.run("app.main:app", host="0.0.0.0", port=port)
+@app.post("/predict-image")
+async def predict_image(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        image = Image.open(io.BytesIO(contents)).convert("RGB")
+        result = predict_toxicity_image(image)
+        return {"success": True, "prediction": result}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Image prediction error: {str(e)}")
