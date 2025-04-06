@@ -1,40 +1,17 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, Request
 from pydantic import BaseModel
-from app.toxic_text_model import predict_toxicity_text
-from app.toxic_image_model import predict_toxicity_image
-from fastapi.middleware.cors import CORSMiddleware
-from PIL import Image
-import io
+from app.text_model import predict_toxicity_text
 
 app = FastAPI()
 
-# Enable CORS for all origins
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Pydantic model for text input
-class TextData(BaseModel):
+class TextInput(BaseModel):
     text: str
 
-@app.post("/predict-text")
-async def predict_text(data: TextData):
-    try:
-        result = predict_toxicity_text(data.text)
-        return {"success": True, "prediction": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Text prediction error: {str(e)}")
+@app.get("/")
+def root():
+    return {"status": "ok"}
 
-@app.post("/predict-image")
-async def predict_image(file: UploadFile = File(...)):
-    try:
-        contents = await file.read()
-        image = Image.open(io.BytesIO(contents)).convert("RGB")
-        result = predict_toxicity_image(image)
-        return {"success": True, "prediction": result}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Image prediction error: {str(e)}")
+@app.post("/predict-text")
+def predict_text(input: TextInput):
+    result = predict_toxicity_text(input.text)
+    return result
