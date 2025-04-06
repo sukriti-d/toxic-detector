@@ -1,6 +1,6 @@
 fastapi
 pillow
-transformers>=4.37.0
+transformers
 torch
+onnxruntime
 uvicorn
-nsfw-detector
